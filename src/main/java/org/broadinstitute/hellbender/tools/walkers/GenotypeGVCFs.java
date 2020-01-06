@@ -145,16 +145,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
 
-    /**
-     * This option can only be activated if intervals are specified.
-     */
-    @Advanced
-    @Argument(fullName= ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
-            doc="Restrict variant output to sites that start within provided intervals",
-            optional=true)
-    private boolean onlyOutputCallsStartingInIntervals = false;
-
-
     @Argument(fullName = FORCE_OUTPUT_INTERVALS_NAME,
             suppressFileExpansion = true, doc = "sites at which to output genotypes even if non-variant in samples", optional = true)
     protected final List<String> forceOutputIntervalStrings = new ArrayList<>();
@@ -173,14 +163,13 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     private VariantContextWriter vcfWriter;
 
-    /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
-    private List<SimpleInterval> intervals;
-
     private OverlapDetector<GenomeLoc> forceOutputIntervals;
 
     private boolean forceOutputIntervalsPresent;
 
     private GenotypeGVCFsEngine gvcfEngine;
+
+
 
     /**
      * Get the largest interval per contig that contains the intervals specified on the command line.
@@ -236,21 +225,12 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
-        if(onlyOutputCallsStartingInIntervals) {
-            if( !hasUserSuppliedIntervals()) {
-                throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
-            }
-        }
-
-        intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
-                Collections.emptyList();
-
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, keepCombined);
 
         merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput);
 
         //methods that cannot be called in engine bc its protected
-        Set<VCFHeaderLine> defaultToolVCFHeaderLines = getDefaultToolVCFHeaderLines();
+        final Set<VCFHeaderLine> defaultToolVCFHeaderLines = getDefaultToolVCFHeaderLines();
         vcfWriter = createVCFWriter(outputFile);
 
         //create engine object
@@ -258,10 +238,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         //call initialize method in engine class that creates VCFWriter object and writes a header to it
         vcfWriter = gvcfEngine.setupVCFWriter(defaultToolVCFHeaderLines, keepCombined, dbsnp, vcfWriter);
-        if( onlyOutputCallsStartingInIntervals ){
-            vcfWriter = new IntervalLimitingVCFWriter(vcfWriter, intervals);
-        }
-
     }
 
     @Override
@@ -272,7 +248,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, somaticInput, tlodThreshold, afTolerance, forceOutput);
 
         if (regenotypedVC != null) {
-            final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());
             if ((inForceOutputIntervals || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC))) {
                 vcfWriter.add(regenotypedVC);
             }

@@ -14,8 +14,11 @@ import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Stream;
+
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
@@ -43,6 +46,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalLimitingVCFWriter;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -119,6 +123,14 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.SITES_ONLY_LONG_NAME,
             doc = "If true, don't emit genotype fields when writing vcf file output.", optional = true)
     public boolean outputSitesOnlyVCFs = false;
+
+    public static final String ONLY_OUTPUT_VARIANTS_STARTING_IN_INTERVALS_LONG_NAME = "only-output-variants-starting-in-intervals";
+    @Argument(fullName = ONLY_OUTPUT_VARIANTS_STARTING_IN_INTERVALS_LONG_NAME,
+            doc = "If true, don't emit variants which start outside the given intervals when writing vcf output.",
+            optional = true)
+    @Advanced
+    public boolean onlyOutputVariantsStartingInIntervals = false;
+
 
     /**
      * Master sequence dictionary to be used instead of all other dictionaries (if provided).
@@ -707,11 +719,15 @@ public abstract class GATKTool extends CommandLineProgram {
 
         initializeIntervals(); // Must be initialized after reference, reads and features, since intervals currently require a sequence dictionary from another data source
 
-        if ( seqValidationArguments.performSequenceDictionaryValidation()) {
+        if (seqValidationArguments.performSequenceDictionaryValidation()) {
             validateSequenceDictionaries();
         }
 
         checkToolRequirements();
+
+        if (onlyOutputVariantsStartingInIntervals && userIntervals == null){
+            throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ONLY_OUTPUT_VARIANTS_STARTING_IN_INTERVALS_LONG_NAME + " was specified.");
+        }
 
         progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
         progressMeter.setRecordLabel(getProgressMeterRecordLabel());
@@ -883,11 +899,17 @@ public abstract class GATKTool extends CommandLineProgram {
             options.add(Options.DO_NOT_WRITE_GENOTYPES);
         }
 
-        return GATKVariantContextUtils.createVCFWriter(
+        final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(
                 outPath,
                 sequenceDictionary,
                 createOutputVariantMD5,
                 options.toArray(new Options[options.size()]));
+
+        if ( onlyOutputVariantsStartingInIntervals) {
+            return new IntervalLimitingVCFWriter(vcfWriter, userIntervals);
+        } else {
+            return vcfWriter;
+        }
     }
 
     /**
