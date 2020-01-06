@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculation
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalLimitingVCFWriter;
 
 import java.io.File;
 import java.util.*;
@@ -257,6 +258,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         //call initialize method in engine class that creates VCFWriter object and writes a header to it
         vcfWriter = gvcfEngine.setupVCFWriter(defaultToolVCFHeaderLines, keepCombined, dbsnp, vcfWriter);
+        if( onlyOutputCallsStartingInIntervals ){
+            vcfWriter = new IntervalLimitingVCFWriter(vcfWriter, intervals);
+        }
 
     }
 
@@ -269,8 +273,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         if (regenotypedVC != null) {
             final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());
-            if ((inForceOutputIntervals || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC)) &&
-                    (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains (variantStart)))) {
+            if ((inForceOutputIntervals || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC))) {
                 vcfWriter.add(regenotypedVC);
             }
         }
