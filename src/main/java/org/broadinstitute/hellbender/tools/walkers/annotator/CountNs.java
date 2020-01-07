@@ -53,7 +53,14 @@ public class CountNs extends InfoFieldAnnotation {
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.N_COUNT_KEY); }
 
     private Boolean doesReadHaveN(final GATKRead read, final VariantContext vc) {
-        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
-        return ( offset != ReadUtils.CLIPPING_GOAL_NOT_REACHED && !AlignmentUtils.isInsideDeletion(read.getCigar(), offset) && read.getBase(offset) == 'N');
+
+        if (vc.getStart() < read.getStart() || read.getEnd() < vc.getStart()) {
+            return false;
+        }
+
+        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
+
+        return !(offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED || offset < 0 || offset >= read.getLength() || AlignmentUtils.isInsideDeletion(read.getCigar(), offset))
+                && read.getBase(offset) == 'N';
     }
 }
