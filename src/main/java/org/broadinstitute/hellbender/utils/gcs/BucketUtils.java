@@ -84,6 +84,7 @@ public final class BucketUtils {
      * @param path the path
      * @return an absolute file path if the original path was a relative file path, otherwise the original path
      */
+    //TODO: this should take a GATKPathSpecifier
     public static String makeFilePathAbsolute(String path){
         if (isCloudStorageUrl(path) || isHadoopUrl(path) || isFileUrl(path)){
             return path;

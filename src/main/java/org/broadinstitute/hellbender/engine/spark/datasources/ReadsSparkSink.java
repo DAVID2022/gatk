@@ -16,6 +16,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.adam.models.ReadGroupDictionary;
 import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
+import org.broadinstitute.hellbender.engine.GATKInputPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -48,7 +49,7 @@ public final class ReadsSparkSink {
      * @param format should the output be a single file, sharded, ADAM, etc.
      */
     public static void writeReads(
-            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
+            final JavaSparkContext ctx, final String outputFile, final GATKInputPath referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
         writeReads(ctx, outputFile, referenceFile, reads, header, format, 0, null, true);
     }
@@ -67,7 +68,7 @@ public final class ReadsSparkSink {
      * @param sortReadsToHeader if true, the writer will perform a sort of reads according to the sort order of the header before writing
      */
     public static void writeReads(
-            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
+            final JavaSparkContext ctx, final String outputFile, final GATKInputPath referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir, final boolean sortReadsToHeader) throws IOException {
         writeReads(ctx, outputFile, referenceFile, reads, header, format, numReducers, outputPartsDir, true, true, sortReadsToHeader);
     }
@@ -76,7 +77,7 @@ public final class ReadsSparkSink {
      * writeReads writes rddReads to outputFile with header as the file header.
      * @param ctx the JavaSparkContext to write.
      * @param outputFile path to the output bam.
-     * @param referenceFile path to the reference. required for cram output, otherwise may be null.
+     * @param referencePath path to the reference. required for cram output, otherwise may be null.
      * @param reads reads to write.
      * @param header the header to put at the top of the files
      * @param format should the output be a single file, sharded, ADAM, etc.
@@ -88,15 +89,15 @@ public final class ReadsSparkSink {
      * @param sortReadsToHeader whether to sort the reads in the underlying RDD to match the header sort order option before writing
      */
     public static void writeReads(
-            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
+            final JavaSparkContext ctx, final String outputFile, final GATKInputPath referencePath, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir,
             final boolean writeBai, final boolean writeSbi, final boolean sortReadsToHeader) throws IOException {
 
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
-        String absoluteReferenceFile = referenceFile != null ?
-                                        BucketUtils.makeFilePathAbsolute(referenceFile) :
-                                        referenceFile;
-      ReadsSparkSource.checkCramReference(ctx, absoluteOutputFile, absoluteReferenceFile);
+        String absoluteReferenceFile = referencePath != null ?
+                                        BucketUtils.makeFilePathAbsolute(referencePath.getURI().toASCIIString()) :
+                                        null;
+        ReadsSparkSource.checkCramReference(ctx, absoluteOutputFile, referencePath);
 
         // The underlying reads are required to be in SAMRecord format in order to be
         // written out, so we convert them to SAMRecord explicitly here. If they're already
