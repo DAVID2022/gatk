@@ -906,7 +906,7 @@ public abstract class GATKTool extends CommandLineProgram {
                 options.toArray(new Options[options.size()]));
 
         if ( onlyOutputVariantsStartingInIntervals) {
-            return new IntervalLimitingVCFWriter(vcfWriter, userIntervals);
+            return new IntervalLimitingVCFWriter(vcfWriter, intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()));
         } else {
             return vcfWriter;
         }

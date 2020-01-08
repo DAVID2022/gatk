@@ -334,7 +334,7 @@ public final class CachingIndexedFastaSequenceFile implements ReferenceSequenceF
 
             try {
                 result = new ReferenceSequence(cache.seq.getName(), cache.seq.getContigIndex(), Arrays.copyOfRange(cache.seq.getBases(), cacheOffsetStart, cacheOffsetStop));
-            } catch ( ArrayIndexOutOfBoundsException e ) {
+            } catch ( final ArrayIndexOutOfBoundsException e ) {
                 throw new GATKException(String.format("BUG: bad array indexing.  Cache start %d and end %d, request start %d end %d, offset start %d and end %d, base size %d",
                         cache.start, cache.stop, start, stop, cacheOffsetStart, cacheOffsetStop, cache.seq.getBases().length), e);
             }

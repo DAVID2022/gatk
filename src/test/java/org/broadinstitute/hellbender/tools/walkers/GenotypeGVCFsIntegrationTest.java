@@ -252,7 +252,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "getGVCFsForGenomicsDBOverMultipleIntervals")
-    public void testGenotypeGVCFsMultiIntervalGDBQuery(File input, File expected, List<Locatable> intervals, String reference) throws IOException {
+    public void testGenotypeGVCFsMultiIntervalGDBQuery(File input, File expected, List<Locatable> intervals, String reference) {
         final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, intervals, true);
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
 
